@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hong Kong Temperature</title>
+  <script src="https://d3js.org/d3.v7.js"></script>
+  <style>
+    /* .tooltip {
+      position: absolute;
+      background: white;
+      padding: 5px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 12px;
+      visibility: hidden;
+    } */
+  </style>
+</head>
+
+<body>
+  <button id="max-min-toggle">Showing Max Temperature, click to change</button>
+
+  <div id="graph-space"></div>
+  <div id="tooltip" class="tooltip"></div>
+</body>
+<script>
+  // Get data
+
+  var processed_temp = [];
+  const data = d3
+    .csv(
+      "https://raw.githubusercontent.com/xiameng552180/CSCE-679-Data-Visualization-Assignment2/main/temperature_daily.csv"
+    )
+    .then(function (temperature_data) {
+      console.log(temperature_data);
+      // Process data
+      for (key in temperature_data) {
+        // console.log("running")
+        let year = parseInt(temperature_data[key]['date']?.substring(0, 4));
+        let month = parseInt(temperature_data[key]['date']?.substring(5, 7));
+        let day = parseInt(temperature_data[key]['date']?.substring(8, 10));
+        processed_temp.push({
+          year: year,
+          month: month,
+          day: day,
+          max_temp: parseInt(temperature_data[key]['max_temperature']),
+          min_temp: parseInt(temperature_data[key]['min_temperature'])
+        })
+
+      }
+      updateRectangles()
+    })
+    .catch(function (error) {
+      // Handle error here
+      console.log(error);
+    });
+
+  // color scaler
+  const colorScaleTemp = d3.scaleLinear()
+    .interpolate(() => t => d3.interpolateRdYlBu(1 - t))
+    .domain([0, 40])
+
+  // ToolTip div
+  const tooltip = d3.select("body").append("div")
+    .attr("class", "tooltip")
+    .style("position", "absolute")
+    .style("visibility", "hidden")
+    .style("background", "#fff")
+    .style("border", "1px solid #ccc")
+    .style("padding", "10px")
+    .style("border-radius", "5px")
+    .style("pointer-events", "none");
+
+  // For changing from max and min temperature
+  let showMax = true; // Start showing max temperature
+  const button = d3.select("#max-min-toggle")
+  button.onclick = () => {
+    showMax = !showMax;
+    console.log(showMax)
+    button.textContent = showMax ? "Showing Min Temperature, click to change" : "Showing Max Temperature, click to change";
+    updateRectangles();
+  };
+
+  const paddingx = 3
+  const paddingy = 3
+  function updateRectangles() {
+    svg.selectAll('rect')
+      .data(processed_temp) // Make sure processed_temp is defined somewhere in your notebook
+      .join("rect")
+      .attr('x', d => xScale(d.year) + paddingx)
+      // Across y-axis as well, and it becomes two dimensional
+      .attr('y', d => yScale(months[d.month - 1]) + paddingy)
+      .attr("width", xScale.bandwidth() - paddingx * 2)
+      .attr("height", yScale.bandwidth() - paddingy * 2)
+      .attr('fill', d => colorScaleTemp(d.max_temp))
+      .on('mouseover', function (event, d) {
+        tooltip.style("visibility", "visible")
+          .html(`Max Temperature: ${d.max_temp}°C<br>Min Temperature: ${d.min_temp}°C`)
+          .style("left", (event.pageX + 10) + "px")
+          .style("top", (event.pageY - 10) + "px");
+      })
+      .on('mouseout', function (event, d) {
+        tooltip.style("visibility", "hidden");
+      })
+  }
+
+  const width = 1000
+  const height = 600
+
+
+  const svg = d3.select("#graph-space")
+    .append("svg")
+    .attr("width", width)
+    .attr("height", height)
+  const months = ["January", "Febuary", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+  const margin = { left: 60, top: 40, right: 60, bottom: 20 }
+
+  const xScale = d3.scaleBand()
+    .range([margin.left, width - margin.right])
+    .domain(d3.range(1997, 2018))
+
+  svg.append('g')
+    .call(d3.axisTop(xScale).ticks(22).tickFormat(d3.format("d")))
+    .attr('transform', `translate(0,${margin.top})`)
+
+  const yScale = d3.scaleBand()
+    .range([margin.top, height - margin.bottom])
+    .domain(months)
+
+  svg.append('g')
+    .call(d3.axisLeft(yScale))
+    .attr('transform', `translate(${margin.left},0)`)
+
+  // const paddingx = 5
+  // const paddingy = 5
+  // const firstTickPosition = xScale(data[0]);
+  // svg.selectAll('rect')
+  //   .data(processed_temp)
+  //   .enter()
+  //   .append("rect")
+  //   .attr('x', d => xScale(d.year) + paddingx)
+  //   // Across y-axis as well, and it becomes two dimensional
+  //   .attr('y', d => yScale(months[d.month - 1]) + paddingy)
+  //   .attr("width", xScale.bandwidth() - paddingx * 2)
+  //   .attr("height", yScale.bandwidth() - paddingy * 2)
+  //   .attr('fill', d => colorScaleTemp(d.max_temp))
+  //   .on('mouseover', function (event, d) {
+  //     tooltip.style("visibility", "visible")
+  //       .html(`Max Temperature: ${d.max_temp}°C<br>Min Temperature: ${d.min_temp}°C`)
+  //       .style("left", (event.pageX + 10) + "px")
+  //       .style("top", (event.pageY - 10) + "px");
+  //   })
+  //   .on('mouseout', function (event, d) {
+  //     tooltip.style("visibility", "hidden");
+  //   })
+
+</script>
+
+</html>
