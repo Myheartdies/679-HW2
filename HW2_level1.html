@@ -29,6 +29,7 @@
   // Get data
 
   var processed_temp = [];
+  var processed_temp_month = [];
   const data = d3
     .csv(
       "https://raw.githubusercontent.com/xiameng552180/CSCE-679-Data-Visualization-Assignment2/main/temperature_daily.csv"
@@ -48,10 +49,29 @@
           max_temp: parseInt(temperature_data[key]['max_temperature']),
           min_temp: parseInt(temperature_data[key]['min_temperature'])
         })
+        var currindex = (year - 1997) * 12 + (month - 1)
+        if (!processed_temp_month[currindex])
+          processed_temp_month[currindex] = {
+            year: year,
+            month: month
+          }
+        if (processed_temp_month[currindex].max_temp) {
+          processed_temp_month[currindex].max_temp
+            = Math.max(...[processed_temp_month[currindex].max_temp, parseInt(temperature_data[key]['max_temperature'])])
+        }
+        else { processed_temp_month[currindex].max_temp = parseInt(temperature_data[key]['max_temperature']) }
 
+        if (processed_temp_month[currindex].min_temp) {
+          processed_temp_month[currindex].min_temp
+            = Math.min(...[processed_temp_month[currindex].min_temp, parseInt(temperature_data[key]['min_temperature'])])
+        }
+        else processed_temp_month[currindex].min_temp = parseInt(temperature_data[key]['min_temperature']);
       }
       // Somehow this for loop always add one extra NaN data to the end, i don't know why but I'll just pop it
       processed_temp.pop()
+      processed_temp_month.pop()
+      console.log(processed_temp)
+      console.log(processed_temp_month)
       updateRectangles()
     })
     .catch(function (error) {
@@ -89,7 +109,7 @@
   const paddingy = 3
   function updateRectangles() {
     svg.selectAll('rect')
-      .data(processed_temp) // Make sure processed_temp is defined somewhere in your notebook
+      .data(processed_temp_month)
       .join("rect")
       .attr('x', d => xScale(d.year) + paddingx)
       // Across y-axis as well, and it becomes two dimensional
