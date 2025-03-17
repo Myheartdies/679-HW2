@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hong Kong Temperature heatmap with Line chart</title>
+  <script src="https://d3js.org/d3.v7.js"></script>
+  <style>
+    /* .tooltip {
+      position: absolute;
+      background: white;
+      padding: 5px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 12px;
+      visibility: hidden;
+    } */
+  </style>
+</head>
+
+<body>
+  <button id="max-min-toggle">Showing Max Temperature, click to change</button>
+  <div id="legend">Legend</div>
+  <div id="graph-space"></div>
+  <div id="tooltip" class="tooltip"></div>
+</body>
+<script>
+  // Get data
+
+  var processed_temp = [];
+  var processed_temp_month = [];
+  var processed_temp_month_all = [];
+  const data = d3
+    .csv(
+      "https://raw.githubusercontent.com/xiameng552180/CSCE-679-Data-Visualization-Assignment2/main/temperature_daily.csv"
+    )
+    .then(function (temperature_data) {
+      console.log(temperature_data);
+      // Process data
+      for (key in temperature_data) {
+        // console.log("running")
+
+        let year = parseInt(temperature_data[key]['date']?.substring(0, 4));
+        let month = parseInt(temperature_data[key]['date']?.substring(5, 7));
+        let day = parseInt(temperature_data[key]['date']?.substring(8, 10));
+        if (year < 2006)
+          continue
+        processed_temp.push({
+          year: year,
+          month: month,
+          day: day,
+          max_temp: parseInt(temperature_data[key]['max_temperature']),
+          min_temp: parseInt(temperature_data[key]['min_temperature'])
+        })
+        var currindex = (year - 2006) * 12 + (month - 1)
+        if (currindex < 0)
+          continue
+        // set month max min
+        if (!processed_temp_month[currindex])
+          processed_temp_month[currindex] = {
+            year: year,
+            month: month
+          }
+        if (processed_temp_month[currindex].max_temp) {
+          processed_temp_month[currindex].max_temp
+            = Math.max(...[processed_temp_month[currindex].max_temp, parseInt(temperature_data[key]['max_temperature'])])
+        }
+        else { processed_temp_month[currindex].max_temp = parseInt(temperature_data[key]['max_temperature']) }
+
+        if (processed_temp_month[currindex].min_temp) {
+          processed_temp_month[currindex].min_temp
+            = Math.min(...[processed_temp_month[currindex].min_temp, parseInt(temperature_data[key]['min_temperature'])])
+        }
+        else processed_temp_month[currindex].min_temp = parseInt(temperature_data[key]['min_temperature']);
+
+        // record temp change
+        if (!processed_temp_month_all[currindex])
+          processed_temp_month_all[currindex] = []
+        processed_temp_month_all[currindex].push({
+          year: year,
+          month: month,
+          day: day,
+          min_temp: parseInt(temperature_data[key]['min_temperature']),
+          max_temp: parseInt(temperature_data[key]['max_temperature'])
+        })
+      }
+      // Somehow this for loop always add one extra NaN data to the end, i don't know why but I'll just pop it
+      processed_temp.pop()
+      processed_temp_month.pop()
+      processed_temp_month_all.pop()
+
+      console.log(processed_temp)
+      console.log(processed_temp_month)
+      console.log(processed_temp_month_all)
+      updateView()
+    })
+    .catch(function (error) {
+      // Handle error here
+      console.log(error);
+    });
+
+  // color scaler
+  const colorScaleTemp = d3.scaleLinear()
+    .interpolate(() => t => d3.interpolateRdYlBu(1 - t))
+    .domain([0, 40])
+
+  // ToolTip div
+  const tooltip = d3.select("body").append("div")
+    .attr("class", "tooltip")
+    .style("position", "absolute")
+    .style("visibility", "hidden")
+    .style("background", "#fff")
+    .style("border", "1px solid #ccc")
+    .style("padding", "10px")
+    .style("border-radius", "5px")
+    .style("pointer-events", "none");
+
+  // For changing from max and min temperature
+  let showMax = true; // Start showing max temperature
+  const button = d3.select("#max-min-toggle").on("click", function () {
+    showMax = !showMax;
+    console.log(showMax)
+    button.html(showMax ? "Showing Max Temperature, click to change" : "Showing Min Temperature, click to change");
+    updateView();
+  })
+
+  function updateView() {
+    updateRectangles()
+    updateLineChart()
+  }
+  // Function for updating the heat map
+  const paddingx = 3
+  const paddingy = 3
+  function updateRectangles() {
+    svg.selectAll('rect')
+      .data(processed_temp_month)
+      .join("rect")
+      .attr('x', d => xScale(d.year) + paddingx)
+      // Across y-axis as well, and it becomes two dimensional
+      .attr('y', d => yScale(months[d.month - 1]) + paddingy)
+      .attr("width", xScale.bandwidth() - paddingx * 2)
+      .attr("height", yScale.bandwidth() - paddingy * 2)
+      .attr('fill', d => colorScaleTemp(showMax ? d.max_temp : d.min_temp))
+      .on('mouseover', function (event, d) {
+        tooltip.style("visibility", "visible")
+          .html(`Max Temperature: ${d.max_temp}°C<br>Min Temperature: ${d.min_temp}°C`)
+          .style("left", (event.pageX + 10) + "px")
+          .style("top", (event.pageY - 10) + "px");
+      })
+      .on('mouseout', function (event, d) {
+        tooltip.style("visibility", "hidden");
+      })
+  }
+
+
+
+  // Setting up and inserting the axis
+  const width = 1000
+  const height = 600
+
+
+  const svg = d3.select("#graph-space")
+    .append("svg")
+    .attr("width", width)
+    .attr("height", height)
+  const months = ["January", "Febuary", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+  const margin = { left: 60, top: 40, right: 60, bottom: 20 }
+
+  const xScale = d3.scaleBand()
+    .range([margin.left, width - margin.right])
+    .domain(d3.range(2006, 2018))
+
+  svg.append('g')
+    .call(d3.axisTop(xScale).ticks(22).tickFormat(d3.format("d")))
+    .attr('transform', `translate(0,${margin.top})`)
+
+  const yScale = d3.scaleBand()
+    .range([margin.top, height - margin.bottom])
+    .domain(months)
+
+  svg.append('g')
+    .call(d3.axisLeft(yScale))
+    .attr('transform', `translate(${margin.left},0)`)
+
+
+
+  // Draw line chart for individual month
+
+
+  function updateLineChart() {
+    // Loop through each month's data
+    for (let key in processed_temp_month_all) {
+      const individual_month_data = processed_temp_month_all[key];
+      const monthData = individual_month_data.filter(d => !isNaN(d.max_temp)); // Filter out any incomplete data
+
+      // Create SVG group for each month if it doesn't already exist
+      const monthGroup = svg.selectAll(`.month-group-${key}`)
+        .data([monthData]) // Bind array containing all month data as a single element
+        .join("g")
+        .attr("class", `month-group-${key}`)
+        .attr("transform", d => {
+          const x = xScale(d[0].year);
+          const y = yScale(months[d[0].month - 1]);
+          return `translate(${x},${y})`;
+        });
+
+      // Define scales within each rectangle
+      let xScaleLine = d3.scaleLinear()
+        .domain([1, 31])  // Assuming 31 days max in any month
+        .range([paddingx, xScale.bandwidth() - paddingx]);
+
+      let yScaleLine = d3.scaleLinear()
+        .domain([0, 40])  // Dynamic domain based on max temp
+        .range([yScale.bandwidth() - paddingy, 0]);
+
+      // Define line generator
+      const lineMax = d3.line()
+        .x(d => xScaleLine(d.day))
+        .y(d => yScaleLine(d.max_temp))
+
+      const lineMin = d3.line()
+        .x(d => xScaleLine(d.day))
+        .y(d => yScaleLine(d.min_temp))
+
+      // Path for the max temp line chart
+      monthGroup.selectAll(".temp-line-max")
+        .data([monthData])  // Bind data for the line
+        .join("path")
+        .attr("class", "temp-line")
+        .attr("d", lineMax)
+        .attr("fill", "none")
+        .attr("stroke", "blue")
+        .attr("stroke-width", 1.5);
+
+      // Path for the max temp line chart
+      monthGroup.selectAll(".temp-line-min")
+        .data([monthData])  // Bind data for the line
+        .join("path")
+        .attr("class", "temp-line")
+        .attr("d", lineMin)
+        .attr("fill", "none")
+        .attr("stroke", "steelblue")
+        .attr("stroke-width", 1.5);
+    }
+  }
+
+
+
+  // Draw legend
+  const legendMarginTop = 80;
+  const legendHeight = 20;
+  const colorScalelegend = d3.scaleLinear()
+    .interpolate(() => t => d3.interpolateRdYlBu(1 - t))
+    .domain([0, 40])
+  const xScaleLegend = d3.scaleLinear()
+    .range([margin.left / 2, margin.left / 2 + 200])
+    .domain([0, 40])
+  const svglegend = d3.select("#legend")
+    .append("svg")
+    .attr("width", 400)
+    .attr("height", 120)
+  svglegend.append('g')
+    .call(d3.axisBottom(xScaleLegend))
+    .attr('transform', `translate(0,${legendMarginTop})`)
+  svglegend.selectAll("rect")
+    .data(d3.range(0, 40))
+    .enter()
+    .append("rect")
+    .attr('x', d => xScaleLegend(d))
+    // Across y-axis as well, and it becomes two dimensional
+    .attr('y', d => legendMarginTop - legendHeight)
+    .attr("width", d => xScaleLegend(1) - xScaleLegend(0))
+    .attr("height", d => legendHeight)
+    .attr('fill', d => colorScalelegend(d))
+
+
+
+</script>
+
+</html>
