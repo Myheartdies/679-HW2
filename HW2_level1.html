@@ -21,7 +21,7 @@
 
 <body>
   <button id="max-min-toggle">Showing Max Temperature, click to change</button>
-
+  <div id="legend">Legend</div>
   <div id="graph-space"></div>
   <div id="tooltip" class="tooltip"></div>
 </body>
@@ -83,13 +83,8 @@
     button.html(showMax ? "Showing Max Temperature, click to change" : "Showing Min Temperature, click to change");
     updateRectangles();
   })
-  // button.onclick = () => {
-  //   showMax = !showMax;
-  //   console.log(showMax)
-  //   button.textContent = showMax ? "Showing Min Temperature, click to change" : "Showing Max Temperature, click to change";
-  //   updateRectangles();
-  // };
 
+  // Function for updating the chart
   const paddingx = 3
   const paddingy = 3
   function updateRectangles() {
@@ -113,6 +108,7 @@
       })
   }
 
+  // Setting up and inserting the axis
   const width = 1000
   const height = 600
 
@@ -140,28 +136,34 @@
     .call(d3.axisLeft(yScale))
     .attr('transform', `translate(${margin.left},0)`)
 
-  // const paddingx = 5
-  // const paddingy = 5
-  // const firstTickPosition = xScale(data[0]);
-  // svg.selectAll('rect')
-  //   .data(processed_temp)
-  //   .enter()
-  //   .append("rect")
-  //   .attr('x', d => xScale(d.year) + paddingx)
-  //   // Across y-axis as well, and it becomes two dimensional
-  //   .attr('y', d => yScale(months[d.month - 1]) + paddingy)
-  //   .attr("width", xScale.bandwidth() - paddingx * 2)
-  //   .attr("height", yScale.bandwidth() - paddingy * 2)
-  //   .attr('fill', d => colorScaleTemp(d.max_temp))
-  //   .on('mouseover', function (event, d) {
-  //     tooltip.style("visibility", "visible")
-  //       .html(`Max Temperature: ${d.max_temp}°C<br>Min Temperature: ${d.min_temp}°C`)
-  //       .style("left", (event.pageX + 10) + "px")
-  //       .style("top", (event.pageY - 10) + "px");
-  //   })
-  //   .on('mouseout', function (event, d) {
-  //     tooltip.style("visibility", "hidden");
-  //   })
+  // Draw legend
+  const legendMarginTop = 80;
+  const legendHeight = 20;
+  const colorScalelegend = d3.scaleLinear()
+    .interpolate(() => t => d3.interpolateRdYlBu(1 - t))
+    .domain([0, 40])
+  const xScaleLegend = d3.scaleLinear()
+    .range([margin.left / 2, margin.left / 2 + 200])
+    .domain([0, 40])
+  const svglegend = d3.select("#legend")
+    .append("svg")
+    .attr("width", 400)
+    .attr("height", 120)
+  svglegend.append('g')
+    .call(d3.axisBottom(xScaleLegend))
+    .attr('transform', `translate(0,${legendMarginTop})`)
+  svglegend.selectAll("rect")
+    .data(d3.range(0, 40))
+    .enter()
+    .append("rect")
+    .attr('x', d => xScaleLegend(d))
+    // Across y-axis as well, and it becomes two dimensional
+    .attr('y', d => legendMarginTop - legendHeight)
+    .attr("width", d => xScaleLegend(1) - xScaleLegend(0))
+    .attr("height", d => legendHeight)
+    .attr('fill', d => colorScalelegend(d))
+
+
 
 </script>
 
