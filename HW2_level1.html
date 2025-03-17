@@ -50,6 +50,8 @@
         })
 
       }
+      // Somehow this for loop always add one extra NaN data to the end, i don't know why but I'll just pop it
+      processed_temp.pop()
       updateRectangles()
     })
     .catch(function (error) {
@@ -75,13 +77,18 @@
 
   // For changing from max and min temperature
   let showMax = true; // Start showing max temperature
-  const button = d3.select("#max-min-toggle")
-  button.onclick = () => {
+  const button = d3.select("#max-min-toggle").on("click", function () {
     showMax = !showMax;
     console.log(showMax)
-    button.textContent = showMax ? "Showing Min Temperature, click to change" : "Showing Max Temperature, click to change";
+    button.html(showMax ? "Showing Max Temperature, click to change" : "Showing Min Temperature, click to change");
     updateRectangles();
-  };
+  })
+  // button.onclick = () => {
+  //   showMax = !showMax;
+  //   console.log(showMax)
+  //   button.textContent = showMax ? "Showing Min Temperature, click to change" : "Showing Max Temperature, click to change";
+  //   updateRectangles();
+  // };
 
   const paddingx = 3
   const paddingy = 3
@@ -94,7 +101,7 @@
       .attr('y', d => yScale(months[d.month - 1]) + paddingy)
       .attr("width", xScale.bandwidth() - paddingx * 2)
       .attr("height", yScale.bandwidth() - paddingy * 2)
-      .attr('fill', d => colorScaleTemp(d.max_temp))
+      .attr('fill', d => colorScaleTemp(showMax ? d.max_temp : d.min_temp))
       .on('mouseover', function (event, d) {
         tooltip.style("visibility", "visible")
           .html(`Max Temperature: ${d.max_temp}°C<br>Min Temperature: ${d.min_temp}°C`)
